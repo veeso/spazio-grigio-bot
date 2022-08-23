@@ -65,39 +65,29 @@ spazio-grigio-bot is a Telegram bot to get the latest news from Irina from Spazi
 
 ## Command API 🐚
 
-- `/bigcorsi`
+- `/ciaoirina`
 
-    This command will display the latest Big luca course
+    Subscribe to the irina's newsletter
 
-- `/bigkatanga`
+- `/sialconsumismo`
 
-    This command will make the bot to send automatic message
+    Unsubscribe from newsletter
 
-    > ❗ Automatic messages includes daily aphorisms and new videos
+- `/buongiornoirina`
 
-- `/bignews`
+    Get a morning routine video
 
-    This commands will return the latest videos from "Il Papi"
+- `/videominimalista`
 
-- `/bigperla`
+    Get latest video from Irina
 
-    This command will make the bot sending a "perla del papi"
+- `/seratasenzatv`
 
-- `/bigpezzente`
+    Get latest videos from Irina
 
-    Unsubscribe from automated messages
+- `/help`
 
-- `/bigsito`
-
-    This commands will return the OFFICIAL PAPI'S WEBSITE
-
-- `/bigvideo`
-
-    This command will display the latest video from "Il Papi"
-
-<p align="center">
-  <img src="/docs/images/big-telegram.webp" />
-</p>
+    Show help
 
 ---
 
