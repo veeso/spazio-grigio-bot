@@ -43,7 +43,8 @@ impl TryFrom<&[u8]> for Message {
         let subject = parsed.get_subject().unwrap_or_default().to_string();
         debug!("mail subject: {}", subject);
         let date = parsed
-            .get_date().cloned()
+            .get_date()
+            .cloned()
             .map(|x| {
                 Utc.ymd_opt(x.year as i32, x.month as u32, x.day as u32)
                     .and_hms_opt(x.hour as u32, x.minute as u32, x.second as u32)
