@@ -26,6 +26,9 @@ impl Repository {
 
     /// Insert a chat to database
     pub async fn insert_chat(&self, chat: ChatId) -> anyhow::Result<()> {
+        if self.is_subscribed(&chat).await? {
+            anyhow::bail!("Ciao sono Irina. Sei già iscritto alla mia newsletter")
+        }
         Chat::new(chat)
             .insert(self.db.pool())
             .await
@@ -59,5 +62,11 @@ impl Repository {
                     })
                     .collect()
             })
+    }
+
+    /// Returns whether `chat_id` is already subscribed
+    async fn is_subscribed(&self, chat_id: &ChatId) -> anyhow::Result<bool> {
+        let subs = self.get_subscribed_chats().await?;
+        Ok(subs.iter().any(|x| x == chat_id))
     }
 }

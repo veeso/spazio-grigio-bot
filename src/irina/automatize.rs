@@ -71,7 +71,7 @@ impl Automatizer {
     async fn setup_cron_scheduler() -> AutomatizerResult<JobScheduler> {
         let sched = JobScheduler::new().await?;
         // good_morning_job
-        let good_morning_job = Job::new_async("0 30 8 * * *", |_, _| {
+        let good_morning_job = Job::new_async("0 5 6 * * *", |_, _| {
             Box::pin(async move {
                 info!("running good_morning_job");
                 if let Err(err) = Self::send_good_morning().await {
@@ -81,7 +81,7 @@ impl Automatizer {
         })?;
         sched.add(good_morning_job).await?;
         // newsletter_job
-        let newsletter_job = Job::new_async("0 30 14 * * *", |_, _| {
+        let newsletter_job = Job::new_async("0 30 12 * * *", |_, _| {
             Box::pin(async move {
                 info!("running newsletter_job");
                 if let Err(err) = Self::fetch_latest_newsletter().await {
