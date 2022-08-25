@@ -145,7 +145,7 @@ impl Automatizer {
             "last time I checked newsletter message, had date {:?}; latest has {}",
             last_post_pubdate, message.date
         );
-        if last_post_pubdate.map(|x| x < message.date).unwrap_or(false) {
+        if last_post_pubdate.map(|x| x < message.date).unwrap_or(true) {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a mail ({}): {}",
@@ -186,7 +186,7 @@ impl Automatizer {
                 last_post_pubdate,
                 date
             );
-        if last_post_pubdate.map(|x| x < date).unwrap_or(false) {
+        if last_post_pubdate.map(|x| x < date).unwrap_or(true) {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a new video ({}): {}",
@@ -227,7 +227,7 @@ impl Automatizer {
                 last_post_pubdate,
                 date
             );
-        if last_post_pubdate.map(|x| x < date).unwrap_or(false) {
+        if last_post_pubdate.map(|x| x < date).unwrap_or(true) {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a new ig post ({}): {}",
