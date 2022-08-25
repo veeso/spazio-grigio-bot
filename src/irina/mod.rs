@@ -96,6 +96,7 @@ impl Irina {
             Command::SiAlConsumismo => Self::unsubscribe_from_automatizer(&message.chat.id).await,
             Command::SerataSenzaTv => Self::get_latest_videos().await,
             Command::VideoMinimalista => Self::get_latest_video().await,
+            Command::PostMinimalista => Self::get_latest_post().await,
         };
         answer.send(&bot, message.chat.id).await
     }
@@ -129,6 +130,16 @@ impl Irina {
                 "Ciao sono Irina. Guarda il mio ultimo video \"{}\" 👉 {}",
                 video.title.unwrap_or_default(),
                 video.url
+            )),
+            Err(err) => Self::error(err),
+        }
+    }
+
+    async fn get_latest_post() -> Answer {
+        match rsshub::RssHubClient::get_latest_post().await {
+            Ok(post) => Answer::simple_text(format!(
+                "Ciao sono Irina. Guarda il mio ultimo post su instagram:\n{}\n 👉 {}",
+                post.summary, post.url
             )),
             Err(err) => Self::error(err),
         }

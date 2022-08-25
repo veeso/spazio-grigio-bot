@@ -77,6 +77,10 @@ spazio-grigio-bot is a Telegram bot to get the latest news from Irina from Spazi
 
     Get a morning routine video
 
+- `/postminimalista`
+
+    Get latest instagram post from Irina
+
 - `/videominimalista`
 
     Get latest video from Irina

@@ -13,13 +13,15 @@ pub enum Command {
     #[command(description = "iscriviti alla newsletter di Spazio Grigio")]
     CiaoIrina,
     #[command(
-        description = "disinscrivi dalla newsletter di Spazio Grigio e rinnega tutti i tuoi valori morali"
+        description = "disinscriviti dalla newsletter di Spazio Grigio e rinnega tutti i tuoi valori morali"
     )]
     SiAlConsumismo,
     #[command(
         description = "comincia nel modo più minimalista la tua giornata con un video della mia morning routine"
     )]
     BuongiornoIrina,
+    #[command(description = "ottieni il link al mio ultimo post instagram")]
+    PostMinimalista,
     #[command(description = "ottieni il link al mio ultimo video")]
     VideoMinimalista,
     #[command(
