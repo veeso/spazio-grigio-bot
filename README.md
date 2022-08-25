@@ -3,7 +3,7 @@
 <p align="center">~ Gli ultimi aggiornamenti di spazio grigio in ogni momento ~</p>
 
 <p align="center">Developed by <a href="https://veeso.github.io/" target="_blank">@veeso</a></p>
-<p align="center">Current version: 0.1.1 (24/08/2022)</p>
+<p align="center">Current version: 0.2.0 (25/08/2022)</p>
 
 <p align="center">
   <a href="https://opensource.org/licenses/Unlicense"
@@ -110,7 +110,9 @@ If you want to develop on this bot, you can follow these simple steps:
 5. Set your database path in your environment using the variable `DATABASE_URI`
 6. Touch the database file `touch $DATABASE_URI`
 7. Set your email account details in the environment `IMAP_SERVER`, `IMAP_PORT`, `EMAIL_ADDRESS`, `EMAIL_PASSWORD`
-8. Run the spazio-grigio bot
+8. Set redis url in the environment `REDIS_URL`
+9. Set rsshub in the environment `RSSHUB_URL`
+10. Run the spazio-grigio bot
 
 #### Deploy with heroku
 

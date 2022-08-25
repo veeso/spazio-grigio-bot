@@ -8,7 +8,9 @@ mod commands;
 mod config;
 mod morning_routine;
 mod newsletter;
+mod redis;
 mod repository;
+mod rsshub;
 mod youtube;
 
 use teloxide::{dispatching::update_listeners::webhooks, prelude::*, utils::command::BotCommands};
@@ -17,6 +19,7 @@ use url::Url;
 use answer::{Answer, AnswerBuilder};
 use automatize::Automatizer;
 use commands::Command;
+use config::Config;
 use morning_routine::MorningRoutine;
 use once_cell::sync::OnceCell;
 
@@ -30,8 +33,8 @@ pub struct Irina {
 impl Irina {
     /// Initialize irina
     pub async fn init() -> anyhow::Result<Self> {
-        if std::env::var("TELOXIDE_TOKEN").is_err() {
-            anyhow::bail!("TELOXIDE_TOKEN is NOT set. You must set this variable in the environment with your bot token API")
+        if let Err(err) = Config::try_from_env() {
+            anyhow::bail!("Failed to load configuraiton from env: {}", err);
         }
         let automatizer = Automatizer::start()
             .await
@@ -68,7 +71,6 @@ impl Irina {
         // start bot
         teloxide::commands_repl_with_listener(self.bot, Self::answer, listener, Command::ty())
             .await;
-        Self::notify_restart().await;
         Ok(())
     }
 
@@ -76,7 +78,6 @@ impl Irina {
     async fn run_simple(self) -> anyhow::Result<()> {
         info!("running bot without webhooks");
         teloxide::commands_repl(self.bot, Self::answer, Command::ty()).await;
-        Self::notify_restart().await;
         Ok(())
     }
 
@@ -105,7 +106,7 @@ impl Irina {
             Ok(feed) => {
                 let mut message =
                     String::from("Ciao sono Irina. Ecco cosa puoi guardare questa sera:\n\n");
-                for video in feed.videos() {
+                for video in feed.entries() {
                     message.push_str(
                         format!(
                             "• {} 👉 {}\n",
@@ -149,28 +150,6 @@ impl Irina {
                 .text("Hai deciso di abbandonare il tuo percorso verso il Minimalismo. Mi dispiace tanto, se vuoi cambiare idea, ricomincia da qui /ciaoirina")
                 .finalize(),
             Err(err) => Self::error(err),
-        }
-    }
-
-    /// Send a reminder to all the subscribed chats, to notify the reboot
-    async fn notify_restart() {
-        info!("bot is shutting down; sending reboot");
-        let bot = Bot::from_env().auto_send();
-        let message = AnswerBuilder::default()
-            .text("Ciao sono Irina. Ora devo fare yoga, ma quando avrò finito tornerò qui con importanti novità.")
-            .finalize();
-        let chats = match automatize::Automatizer::subscribed_chats().await {
-            Ok(c) => c,
-            Err(err) => {
-                error!("failed to get chats: {}", err);
-                return;
-            }
-        };
-        for chat in chats.iter() {
-            debug!("sending reboot to {}", chat);
-            if let Err(err) = message.clone().send(&bot, *chat).await {
-                error!("failed to reboot to {}: {}", chat, err);
-            }
         }
     }
 

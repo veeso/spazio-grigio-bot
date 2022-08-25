@@ -10,7 +10,7 @@ license = "Unlicense"
 name = "spazio-grigio-bot"
 readme = "README.md"
 repository = "https://github.com/veeso/spazio-grigio-bot"
-version = "0.1.1"
+version = "0.2.0"
 
 [[bin]]
 name = "spazio-grigio-bot"
@@ -26,10 +26,10 @@ envy = "^0.4.2"
 feed-rs = "^1.1.0"
 futures = "^0.3"
 lazy-regex = "^2.3.0"
-lazy_static = "^1.4.0"
 mail-parser = "^0.6"
 once_cell = "^1.13"
 rand = "0.8.5"
+redis = { version = "^0.21.6", features = ["tokio-comp"] }
 reqwest = { version = "^0.11", features = [ "rustls-tls" ] }
 serde = { version = "^1.0.0", features = [ "derive" ] }
 sqlx = { version = "^0.6", features = [ "runtime-tokio-rustls", "sqlite" ] }

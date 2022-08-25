@@ -3,23 +3,19 @@
 //! A module to automatize messages
 
 use super::newsletter::Newsletter;
+use super::redis::RedisRepository;
 use super::repository::Repository;
+use super::rsshub::RssHubClient;
 use super::youtube::Youtube;
 use super::AnswerBuilder;
 
-use chrono::{DateTime, Local, Utc};
-use futures::lock::Mutex;
+use chrono::Utc;
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use thiserror::Error;
 use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 
 type AutomatizerResult<T> = Result<T, AutomatizerError>;
-
-lazy_static! {
-    static ref LAST_VIDEO_PUBLISHED_DATE: Mutex<DateTime<Local>> = Mutex::new(DateTime::default());
-    static ref LAST_NEWSLETTER_EMAIL_DATE: Mutex<DateTime<Utc>> = Mutex::new(DateTime::default());
-}
 
 /// Automatizer error
 #[derive(Debug, Error)]
@@ -43,9 +39,6 @@ impl Automatizer {
     /// Start automatizer
     pub async fn start() -> AutomatizerResult<Self> {
         debug!("starting automatizer");
-        if let Err(err) = Self::notify_started().await {
-            error!("failed to send start notify: {}", err);
-        }
         Ok(Self {
             scheduler: Self::setup_cron_scheduler().await?,
         })
@@ -90,6 +83,16 @@ impl Automatizer {
             })
         })?;
         sched.add(newsletter_job).await?;
+        // newsletter_job
+        let instagram_job = Job::new_async("0 40 * * * *", |_, _| {
+            Box::pin(async move {
+                info!("running instagram_job");
+                if let Err(err) = Self::fetch_latest_instagram_post().await {
+                    error!("instagram_job failed: {}", err);
+                }
+            })
+        })?;
+        sched.add(instagram_job).await?;
         // new video check
         let new_video_check_job = Job::new_async("0 30 * * * *", |_, _| {
             Box::pin(async move {
@@ -136,12 +139,13 @@ impl Automatizer {
                 anyhow::bail!("failed to check latest message: {}", err)
             }
         };
+        let mut redis_client = RedisRepository::connect()?;
+        let last_post_pubdate = redis_client.get_last_newsletter_update().await?;
         debug!(
-            "last time I checked newsletter message, had date {}; latest has {}",
-            *LAST_NEWSLETTER_EMAIL_DATE.lock().await,
-            message.date
+            "last time I checked newsletter message, had date {:?}; latest has {}",
+            last_post_pubdate, message.date
         );
-        if *LAST_NEWSLETTER_EMAIL_DATE.lock().await < message.date {
+        if last_post_pubdate.map(|x| x < message.date).unwrap_or(false) {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a mail ({}): {}",
@@ -159,7 +163,9 @@ impl Automatizer {
                     error!("failed to send scheduled newsletter to {}: {}", chat, err);
                 }
             }
-            *LAST_NEWSLETTER_EMAIL_DATE.lock().await = message.date;
+            redis_client
+                .set_last_newsletter_update(message.date)
+                .await?;
         }
         Ok(())
     }
@@ -172,48 +178,77 @@ impl Automatizer {
                 anyhow::bail!("failed to check latest video: {}", err)
             }
         };
-        if let Some(date) = video.date {
-            debug!(
-                "last time I checked big-luca videos, big-luca video had date {}; latest has {}",
-                *LAST_VIDEO_PUBLISHED_DATE.lock().await,
+        let mut redis_client = RedisRepository::connect()?;
+        let last_post_pubdate = redis_client.get_last_video_pubdate().await?;
+        let date = video.date.unwrap_or_else(Utc::now);
+        debug!(
+                "last time I checked spazio-grigio videos, spazio-grigio video had date {:?}; latest has {}",
+                last_post_pubdate,
                 date
             );
-            if *LAST_VIDEO_PUBLISHED_DATE.lock().await < date {
-                let bot = Bot::from_env().auto_send();
-                info!(
-                    "spazio grigio published a new video ({}): {}",
-                    date,
-                    video.title.as_deref().unwrap_or_default()
-                );
-                let message = AnswerBuilder::default()
-                    .text(format!(
-                        "Ciao sono Irina. Ho appena pubblicato questo nuovo mio video: {}\n👉 {}",
-                        video.title.as_deref().unwrap_or_default(),
-                        video.url
-                    ))
-                    .finalize();
-                for chat in Self::subscribed_chats().await?.iter() {
-                    debug!("sending new video notify to {}", chat);
-                    if let Err(err) = message.clone().send(&bot, *chat).await {
-                        error!("failed to send scheduled video notify to {}: {}", chat, err);
-                    }
+        if last_post_pubdate.map(|x| x < date).unwrap_or(false) {
+            let bot = Bot::from_env().auto_send();
+            info!(
+                "spazio grigio published a new video ({}): {}",
+                date,
+                video.title.as_deref().unwrap_or_default()
+            );
+            let message = AnswerBuilder::default()
+                .text(format!(
+                    "Ciao sono Irina. Ho appena pubblicato questo nuovo mio video: {}\n👉 {}",
+                    video.title.as_deref().unwrap_or_default(),
+                    video.url
+                ))
+                .finalize();
+            for chat in Self::subscribed_chats().await?.iter() {
+                debug!("sending new video notify to {}", chat);
+                if let Err(err) = message.clone().send(&bot, *chat).await {
+                    error!("failed to send scheduled video notify to {}: {}", chat, err);
                 }
-                *LAST_VIDEO_PUBLISHED_DATE.lock().await = date;
             }
+            redis_client.set_last_video_pubdate(date).await?;
         }
         Ok(())
     }
 
-    pub async fn notify_started() -> anyhow::Result<()> {
-        let bot = Bot::from_env().auto_send();
-        let message = AnswerBuilder::default()
-            .text("Ciao sono Irina. Sono tornata dallo yoga.")
-            .finalize();
-        for chat in Self::subscribed_chats().await?.iter() {
-            debug!("sending new video notify to {}", chat);
-            if let Err(err) = message.clone().send(&bot, *chat).await {
-                error!("failed to send start notify to {}: {}", chat, err);
+    /// Fetch latest video job
+    async fn fetch_latest_instagram_post() -> anyhow::Result<()> {
+        let post = match RssHubClient::get_latest_post().await {
+            Ok(v) => v,
+            Err(err) => {
+                anyhow::bail!("failed to check latest post: {}", err)
             }
+        };
+        let mut redis_client = RedisRepository::connect()?;
+        let last_post_pubdate = redis_client.get_last_instagram_update().await?;
+        let date = post.date.unwrap_or_else(Utc::now);
+        debug!(
+                "last time I checked spazio-grigio posts, spazio-grigio post had date {:?}; latest has {}",
+                last_post_pubdate,
+                date
+            );
+        if last_post_pubdate.map(|x| x < date).unwrap_or(false) {
+            let bot = Bot::from_env().auto_send();
+            info!(
+                "spazio grigio published a new ig post ({}): {}",
+                date,
+                post.title.as_deref().unwrap_or_default()
+            );
+            let message = AnswerBuilder::default()
+                .text(format!(
+                    "Ciao sono Irina. Ho appena pubblicato questo nuovo mio post su Instagram: {}\n{}\n👉 {}",
+                    post.title.as_deref().unwrap_or_default(),
+                    post.summary,
+                    post.url
+                ))
+                .finalize();
+            for chat in Self::subscribed_chats().await?.iter() {
+                debug!("sending new post notify to {}", chat);
+                if let Err(err) = message.clone().send(&bot, *chat).await {
+                    error!("failed to send scheduled post notify to {}: {}", chat, err);
+                }
+            }
+            redis_client.set_last_instagram_update(date).await?;
         }
         Ok(())
     }
