@@ -23,9 +23,9 @@ impl RssHubClient {
         }
     }
 
-    /// Fetch youtube channel feed
-    pub async fn fetch_instagram(&self, account: &str) -> RssHubResult<Feed> {
-        let uri = format!("{}/instagram/user/{}", self.url, account);
+    /// Fetch picuki account feed
+    pub async fn fetch_picuki(&self, account: &str) -> RssHubResult<Feed> {
+        let uri = format!("{}/picuki/profile/{}", self.url, account);
         let body = self.fetch_feed(&uri).await?;
         trace!("Got body {}", body);
         self.parse_feed(body)

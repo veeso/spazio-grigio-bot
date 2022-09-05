@@ -74,7 +74,7 @@ impl Automatizer {
         })?;
         sched.add(good_morning_job).await?;
         // newsletter_job
-        let newsletter_job = Job::new_async("0 30 12 * * *", |_, _| {
+        let newsletter_job = Job::new_async("0 30 19 * * *", |_, _| {
             Box::pin(async move {
                 info!("running newsletter_job");
                 if let Err(err) = Self::fetch_latest_newsletter().await {
@@ -87,7 +87,7 @@ impl Automatizer {
         let instagram_job = Job::new_async("0 40 * * * *", |_, _| {
             Box::pin(async move {
                 info!("running instagram_job");
-                if let Err(err) = Self::fetch_latest_instagram_post().await {
+                if let Err(err) = Self::fetch_latest_unseen_instagram_post().await {
                     error!("instagram_job failed: {}", err);
                 }
             })
@@ -172,21 +172,29 @@ impl Automatizer {
 
     /// Fetch latest video job
     async fn fetch_latest_video() -> anyhow::Result<()> {
-        let video = match Youtube::get_latest_video().await {
-            Ok(v) => v,
+        let mut redis_client = RedisRepository::connect()?;
+        let last_post_pubdate = redis_client
+            .get_last_video_pubdate()
+            .await?
+            .unwrap_or_default();
+        let video = match Youtube::get_oldest_unseen_video(last_post_pubdate).await {
+            Ok(Some(v)) => v,
+            Ok(None) => {
+                debug!("could not find any unseen video from spazio grigio");
+                return Ok(());
+            }
             Err(err) => {
                 anyhow::bail!("failed to check latest video: {}", err)
             }
         };
-        let mut redis_client = RedisRepository::connect()?;
-        let last_post_pubdate = redis_client.get_last_video_pubdate().await?;
+
         let date = video.date.unwrap_or_else(Utc::now);
         debug!(
                 "last time I checked spazio-grigio videos, spazio-grigio video had date {:?}; latest has {}",
                 last_post_pubdate,
                 date
             );
-        if last_post_pubdate.map(|x| x < date).unwrap_or(true) {
+        if last_post_pubdate < date {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a new video ({}): {}",
@@ -212,22 +220,30 @@ impl Automatizer {
     }
 
     /// Fetch latest video job
-    async fn fetch_latest_instagram_post() -> anyhow::Result<()> {
-        let post = match RssHubClient::get_latest_post().await {
-            Ok(v) => v,
+    async fn fetch_latest_unseen_instagram_post() -> anyhow::Result<()> {
+        let mut redis_client = RedisRepository::connect()?;
+        let last_post_pubdate = redis_client
+            .get_last_instagram_update()
+            .await?
+            .unwrap_or_default();
+        let post = match RssHubClient::get_oldest_unseen_post(last_post_pubdate).await {
+            Ok(Some(v)) => v,
+            Ok(None) => {
+                debug!("no unseen posts from instagram could be found");
+                return Ok(());
+            }
             Err(err) => {
                 anyhow::bail!("failed to check latest post: {}", err)
             }
         };
-        let mut redis_client = RedisRepository::connect()?;
-        let last_post_pubdate = redis_client.get_last_instagram_update().await?;
+
         let date = post.date.unwrap_or_else(Utc::now);
         debug!(
                 "last time I checked spazio-grigio posts, spazio-grigio post had date {:?}; latest has {}",
                 last_post_pubdate,
                 date
             );
-        if last_post_pubdate.map(|x| x < date).unwrap_or(true) {
+        if last_post_pubdate < date {
             let bot = Bot::from_env().auto_send();
             info!(
                 "spazio grigio published a new ig post ({}): {}",
