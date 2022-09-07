@@ -9,7 +9,6 @@ use super::rsshub::RssHubClient;
 use super::youtube::Youtube;
 use super::AnswerBuilder;
 
-use chrono::Utc;
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use thiserror::Error;
@@ -188,34 +187,34 @@ impl Automatizer {
             }
         };
 
-        let date = video.date.unwrap_or_else(Utc::now);
         debug!(
-                "last time I checked spazio-grigio videos, spazio-grigio video had date {:?}; latest has {}",
+                "last time I checked spazio-grigio videos, spazio-grigio video had date {:?}; latest has {:?}",
                 last_post_pubdate,
-                date
+                video.date
             );
-        if last_post_pubdate < date {
-            let bot = Bot::from_env().auto_send();
-            info!(
-                "spazio grigio published a new video ({}): {}",
-                date,
-                video.title.as_deref().unwrap_or_default()
-            );
-            let message = AnswerBuilder::default()
-                .text(format!(
-                    "Ciao sono Irina. Ho appena pubblicato questo nuovo mio video: {}\n👉 {}",
-                    video.title.as_deref().unwrap_or_default(),
-                    video.url
-                ))
-                .finalize();
-            for chat in Self::subscribed_chats().await?.iter() {
-                debug!("sending new video notify to {}", chat);
-                if let Err(err) = message.clone().send(&bot, *chat).await {
-                    error!("failed to send scheduled video notify to {}: {}", chat, err);
-                }
+        let bot = Bot::from_env().auto_send();
+        info!(
+            "spazio grigio published a new video ({:?}): {}",
+            video.date,
+            video.title.as_deref().unwrap_or_default()
+        );
+        let message = AnswerBuilder::default()
+            .text(format!(
+                "Ciao sono Irina. Ho appena pubblicato questo nuovo mio video: {}\n👉 {}",
+                video.title.as_deref().unwrap_or_default(),
+                video.url
+            ))
+            .finalize();
+        for chat in Self::subscribed_chats().await?.iter() {
+            debug!("sending new video notify to {}", chat);
+            if let Err(err) = message.clone().send(&bot, *chat).await {
+                error!("failed to send scheduled video notify to {}: {}", chat, err);
             }
+        }
+        if let Some(date) = video.date {
             redis_client.set_last_video_pubdate(date).await?;
         }
+
         Ok(())
     }
 
@@ -236,21 +235,18 @@ impl Automatizer {
                 anyhow::bail!("failed to check latest post: {}", err)
             }
         };
-
-        let date = post.date.unwrap_or_else(Utc::now);
         debug!(
-                "last time I checked spazio-grigio posts, spazio-grigio post had date {:?}; latest has {}",
+                "last time I checked spazio-grigio posts, spazio-grigio post had date {:?}; latest has {:?}",
                 last_post_pubdate,
-                date
+                post.date
             );
-        if last_post_pubdate < date {
-            let bot = Bot::from_env().auto_send();
-            info!(
-                "spazio grigio published a new ig post ({}): {}",
-                date,
-                post.title.as_deref().unwrap_or_default()
-            );
-            let message = AnswerBuilder::default()
+        let bot = Bot::from_env().auto_send();
+        info!(
+            "spazio grigio published a new ig post ({:?}): {}",
+            post.date,
+            post.title.as_deref().unwrap_or_default()
+        );
+        let message = AnswerBuilder::default()
                 .text(format!(
                     "Ciao sono Irina. Ho appena pubblicato questo nuovo mio post su Instagram: {}\n{}\n👉 {}",
                     post.title.as_deref().unwrap_or_default(),
@@ -258,14 +254,16 @@ impl Automatizer {
                     post.url
                 ))
                 .finalize();
-            for chat in Self::subscribed_chats().await?.iter() {
-                debug!("sending new post notify to {}", chat);
-                if let Err(err) = message.clone().send(&bot, *chat).await {
-                    error!("failed to send scheduled post notify to {}: {}", chat, err);
-                }
+        for chat in Self::subscribed_chats().await?.iter() {
+            debug!("sending new post notify to {}", chat);
+            if let Err(err) = message.clone().send(&bot, *chat).await {
+                error!("failed to send scheduled post notify to {}: {}", chat, err);
             }
+        }
+        if let Some(date) = post.date {
             redis_client.set_last_instagram_update(date).await?;
         }
+
         Ok(())
     }
 
