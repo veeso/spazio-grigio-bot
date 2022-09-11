@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.4.0](#040)
   - [0.3.1](#031)
   - [0.3.0](#030)
   - [0.2.1](#021)
@@ -9,6 +10,13 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.4.0
+
+Released on 11/09/2022
+
+- Use instagram scraper instead of rsshub
+- Get also the other newsletter
 
 ## 0.3.1
 
