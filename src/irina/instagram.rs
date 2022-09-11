@@ -10,7 +10,7 @@ use super::Config;
 
 pub struct InstagramService;
 
-const BIGLUCA_ACCOUNT_ID: &str = "bigluca.marketing";
+const BIGLUCA_ACCOUNT_ID: &str = "spaziogrigio";
 
 impl InstagramService {
     /// Get newest (latest) post from instagram

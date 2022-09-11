@@ -10,7 +10,7 @@ license = "Unlicense"
 name = "spazio-grigio-bot"
 readme = "README.md"
 repository = "https://github.com/veeso/spazio-grigio-bot"
-version = "0.4.0"
+version = "0.4.1"
 
 [[bin]]
 name = "spazio-grigio-bot"

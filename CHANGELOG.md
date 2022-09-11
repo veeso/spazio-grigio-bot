@@ -1,6 +1,7 @@
 # Changelog
 
 - [Changelog](#changelog)
+  - [0.4.1](#041)
   - [0.4.0](#040)
   - [0.3.1](#031)
   - [0.3.0](#030)
@@ -10,6 +11,13 @@
   - [0.1.0](#010)
 
 ---
+
+## 0.4.1
+
+
+Released on 11/09/2022
+
+- fixed copy-pasted instagram account name
 
 ## 0.4.0
 
