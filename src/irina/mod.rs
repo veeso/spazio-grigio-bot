@@ -6,11 +6,11 @@ mod answer;
 mod automatize;
 mod commands;
 mod config;
+mod instagram;
 mod morning_routine;
 mod newsletter;
 mod redis;
 mod repository;
-mod rsshub;
 mod youtube;
 
 use teloxide::{dispatching::update_listeners::webhooks, prelude::*, utils::command::BotCommands};
@@ -136,11 +136,14 @@ impl Irina {
     }
 
     async fn get_latest_post() -> Answer {
-        match rsshub::RssHubClient::get_latest_post().await {
-            Ok(post) => Answer::simple_text(format!(
-                "Ciao sono Irina. Guarda il mio ultimo post su instagram:\n{}\n 👉 {}",
-                post.summary, post.url
-            )),
+        match instagram::InstagramService::get_latest_post().await {
+            Ok(post) => AnswerBuilder::default()
+                .text(format!(
+                    "Ciao sono Irina. Guarda il mio ultimo post su instagram:\n{}",
+                    post.caption.unwrap_or_default()
+                ))
+                .image(post.display_url)
+                .finalize(),
             Err(err) => Self::error(err),
         }
     }

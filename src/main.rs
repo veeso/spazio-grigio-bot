@@ -13,7 +13,6 @@ mod irina;
 mod mail;
 mod redis;
 mod repository;
-mod rsshub;
 mod utils;
 mod youtube;
 

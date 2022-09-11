@@ -2,13 +2,14 @@
 //!
 //! A module to automatize messages
 
+use super::instagram::InstagramService;
 use super::newsletter::Newsletter;
 use super::redis::RedisRepository;
 use super::repository::Repository;
-use super::rsshub::RssHubClient;
 use super::youtube::Youtube;
 use super::AnswerBuilder;
 
+use std::time::UNIX_EPOCH;
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use thiserror::Error;
@@ -224,8 +225,8 @@ impl Automatizer {
         let last_post_pubdate = redis_client
             .get_last_instagram_update()
             .await?
-            .unwrap_or_default();
-        let post = match RssHubClient::get_oldest_unseen_post(last_post_pubdate).await {
+            .unwrap_or(UNIX_EPOCH);
+        let post = match InstagramService::get_oldest_unseen_post(last_post_pubdate).await {
             Ok(Some(v)) => v,
             Ok(None) => {
                 debug!("no unseen posts from instagram could be found");
@@ -238,31 +239,29 @@ impl Automatizer {
         debug!(
                 "last time I checked spazio-grigio posts, spazio-grigio post had date {:?}; latest has {:?}",
                 last_post_pubdate,
-                post.date
+                post.taken_at_timestamp
             );
         let bot = Bot::from_env().auto_send();
         info!(
-            "spazio grigio published a new ig post ({:?}): {}",
-            post.date,
-            post.title.as_deref().unwrap_or_default()
+            "spazio grigio published a new ig post ({:?})",
+            post.taken_at_timestamp
         );
         let message = AnswerBuilder::default()
-                .text(format!(
-                    "Ciao sono Irina. Ho appena pubblicato questo nuovo mio post su Instagram: {}\n{}\n👉 {}",
-                    post.title.as_deref().unwrap_or_default(),
-                    post.summary,
-                    post.url
-                ))
-                .finalize();
+            .text(format!(
+                "Ciao sono Irina. Ho appena pubblicato questo nuovo mio post su Instagram: {}",
+                post.caption.unwrap_or_default(),
+            ))
+            .image(post.display_url)
+            .finalize();
         for chat in Self::subscribed_chats().await?.iter() {
             debug!("sending new post notify to {}", chat);
             if let Err(err) = message.clone().send(&bot, *chat).await {
                 error!("failed to send scheduled post notify to {}: {}", chat, err);
             }
         }
-        if let Some(date) = post.date {
-            redis_client.set_last_instagram_update(date).await?;
-        }
+        redis_client
+            .set_last_instagram_update(post.taken_at_timestamp)
+            .await?;
 
         Ok(())
     }

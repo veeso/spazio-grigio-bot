@@ -25,6 +25,8 @@ jobs:
         with:
           command: test
           args: --no-fail-fast
+        env:
+          REDIS_URL: redis://localhost
       - name: Format
         run: cargo fmt --all -- --check
       - name: Clippy

@@ -10,8 +10,9 @@ pub struct Config {
     pub email_password: String,
     pub imap_server: String,
     pub imap_port: u16,
+    pub instagram_password: String,
+    pub instagram_username: String,
     pub redis_url: String,
-    pub rsshub_url: String,
     pub teloxide_token: String,
 }
 
